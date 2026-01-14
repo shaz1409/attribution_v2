@@ -6,7 +6,7 @@ steps:
         "build",
         "-t",
         "europe-west1-docker.pkg.dev/$PROJECT_ID/crg-jobs/attribution-model:$COMMIT_SHA",
-        "ATTRIBUTION_V2"
+        "."
       ]
 
   # Push the image
