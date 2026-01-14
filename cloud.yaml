@@ -1,0 +1,35 @@
+steps:
+  # Build the image from ATTRIBUTION_V2/ (where your Dockerfile is)
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "europe-west1-docker.pkg.dev/$PROJECT_ID/crg-jobs/attribution-model:$COMMIT_SHA",
+        "ATTRIBUTION_V2"
+      ]
+
+  # Push the image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "europe-west1-docker.pkg.dev/$PROJECT_ID/crg-jobs/attribution-model:$COMMIT_SHA"
+      ]
+
+  # Update the existing Cloud Run Job to use the new image
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: "gcloud"
+    args:
+      [
+        "run",
+        "jobs",
+        "update",
+        "attribution-model",
+        "--image",
+        "europe-west1-docker.pkg.dev/$PROJECT_ID/crg-jobs/attribution-model:$COMMIT_SHA",
+        "--region",
+        "europe-west1"
+      ]
+images:
+  - "europe-west1-docker.pkg.dev/$PROJECT_ID/crg-jobs/attribution-model:$COMMIT_SHA"

@@ -19,13 +19,14 @@ import seaborn as sns
 import gc
 from datetime import datetime
 import re
-from google.cloud import bigquery
+from google.cloud import bigquery, bigquery_storage
 
 ################################################# Data Loading  #########################################
 
 project = "ft-customer-analytics"
 location = "EU"
 client = bigquery.Client(project=project, location=location)
+bqstorage = bigquery_storage.BigQueryReadClient()
 
 ################################################# Define variables #################################################
 
@@ -65,7 +66,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
 
     # Execute the query
     query_job = client.query(query)
-    df = query_job.to_dataframe()
+    df = query_job.to_dataframe(bqstorage_client=bqstorage)
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -178,6 +179,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'product_arrangement_id',
         'is_app_conversion',
         'product_type',
+        'user_registration_source',
          ]].drop_duplicates()
 
         # Merge user_df_temp with product_arrangement_df
@@ -286,7 +288,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
 
     # Execute the query
     query_job = client.query(query)
-    df = query_job.to_dataframe()
+    df = query_job.to_dataframe(bqstorage_client=bqstorage)
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -354,6 +356,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'product_arrangement_id',
         'is_app_conversion',
         'product_type',
+        'user_registration_source',
          ]].drop_duplicates()
     
         # Merge user_df_temp with product_arrangement_df
@@ -462,7 +465,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
 
     # Execute the query
     query_job = client.query(query)
-    df = query_job.to_dataframe()
+    df = query_job.to_dataframe(bqstorage_client=bqstorage)
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -530,6 +533,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'product_arrangement_id',
         'is_app_conversion',
         'product_type',
+        'user_registration_source',
          ]].drop_duplicates()
     
         # Merge user_df_temp with product_arrangement_df
@@ -676,7 +680,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
 
     # Execute the query
     query_job = client.query(query)
-    df = query_job.to_dataframe()
+    df = query_job.to_dataframe(bqstorage_client=bqstorage)
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -786,6 +790,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'product_arrangement_id',
         'is_app_conversion',
         'product_type',
+        'user_registration_source',
          ]].drop_duplicates()
 
         # Merge user_df_temp with product_arrangement_df
@@ -892,7 +897,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
 
     # Execute the query
     query_job = client.query(query)
-    df = query_job.to_dataframe()
+    df = query_job.to_dataframe(bqstorage_client=bqstorage)
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -960,6 +965,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'product_arrangement_id',
         'is_app_conversion',
         'product_type',
+        'user_registration_source',
          ]].drop_duplicates()
 
         # Merge user_df_temp with product_arrangement_df
@@ -1067,7 +1073,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
 
     # Execute the query
     query_job = client.query(query)
-    df = query_job.to_dataframe()
+    df = query_job.to_dataframe(bqstorage_client=bqstorage)
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1135,8 +1141,9 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'product_arrangement_id',
         'is_app_conversion',
         'product_type',
+        'user_registration_source',
          ]].drop_duplicates()
-
+    
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
             product_arrangement_df,
@@ -1144,10 +1151,10 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
             right_on=['user_guid', 'conversion_visit_timestamp_date'],
             how='left'
         )
-
+    
         # Drop 'conversion_visit_timestamp_date' column after merge
         user_df_temp.drop(columns=['conversion_visit_timestamp_date'], inplace=True)
-
+    
         # Now concatenate user_df_temp into user_df_all_trial_30
         user_df_all_trial_30 = pd.concat(
             [user_df_all_trial_30, user_df_temp], ignore_index=True
@@ -1281,7 +1288,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
 
     # Execute the query
     query_job = client.query(query)
-    df = query_job.to_dataframe()
+    df = query_job.to_dataframe(bqstorage_client=bqstorage)
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1393,6 +1400,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'product_arrangement_id',
         'is_app_conversion',
         'product_type',
+        'user_registration_source',
          ]].drop_duplicates()
 
         # Merge user_df_temp with product_arrangement_df
@@ -1505,7 +1513,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
 
     # Execute the query
     query_job = client.query(query)
-    df = query_job.to_dataframe()
+    df = query_job.to_dataframe(bqstorage_client=bqstorage)
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1617,6 +1625,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'product_arrangement_id',
         'is_app_conversion',
         'product_type',
+        'user_registration_source',
          ]].drop_duplicates().drop_duplicates()
 
         # Merge user_df_temp with product_arrangement_df
@@ -1729,7 +1738,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
 
     # Execute the query
     query_job = client.query(query)
-    df = query_job.to_dataframe()
+    df = query_job.to_dataframe(bqstorage_client=bqstorage)
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1841,8 +1850,9 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'product_arrangement_id',
         'is_app_conversion',
         'product_type',
+        'user_registration_source',
          ]].drop_duplicates()
-
+    
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
             product_arrangement_df,
@@ -1850,10 +1860,10 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
             right_on=['user_guid', 'conversion_visit_timestamp_date'],
             how='left'
         )
-
+    
         # Drop 'conversion_visit_timestamp_date' column after merge
         user_df_temp.drop(columns=['conversion_visit_timestamp_date'], inplace=True)
-
+    
         # Now concatenate user_df_temp into user_df_all_regis_30
         user_df_all_regis_30 = pd.concat(
             [user_df_all_regis_30, user_df_temp], ignore_index=True
@@ -2012,7 +2022,7 @@ query = f"""
 
 
 query_job = client.query(query)
-ltv_df = query_job.to_dataframe()
+ltv_df = query_job.to_dataframe(bqstorage_client=bqstorage)
 
 ltv_df = ltv_df.dropna(subset=["ltv_acquisition_capped_12m"])
 
