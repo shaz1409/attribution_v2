@@ -1,33 +1,27 @@
 steps:
   - name: "gcr.io/cloud-builders/docker"
     args:
-      [
-        "build",
-        "-t",
-        "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA",
-        "."
-      ]
+      - "build"
+      - "-t"
+      - "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA"
+      - "."
 
   - name: "gcr.io/cloud-builders/docker"
     args:
-      [
-        "push",
-        "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA"
-      ]
+      - "push"
+      - "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA"
 
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: "gcloud"
     args:
-      [
-        "run",
-        "jobs",
-        "update",
-        "attribution-model",
-        "--image",
-        "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA",
-        "--region",
-        "europe-west1"
-      ]
+      - "run"
+      - "jobs"
+      - "update"
+      - "attribution-model"
+      - "--image"
+      - "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA"
+      - "--region"
+      - "europe-west1"
 
 images:
   - "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA"
