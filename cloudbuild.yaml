@@ -2,9 +2,10 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 substitutions:
+  _JOB_REGION: europe-west1
+  _AR_REGION: europe-west2
   _AR_REPO: attribution-auto
   _IMAGE: attribution-auto
-  _REGION: europe-west1   # ← was europe-west2
   _JOB_NAME: attribution-model
 
 steps:
