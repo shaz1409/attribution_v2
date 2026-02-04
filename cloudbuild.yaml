@@ -1,30 +1,25 @@
 steps:
-  - name: "gcr.io/cloud-builders/docker"
+  - name: gcr.io/cloud-builders/docker
     args:
-      - "build"
+      - build
       - "-t"
-      - "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA"
+      - "europe-west2-docker.pkg.dev/$PROJECT_ID/attribution-auto/<attribution-auto>:$SHORT_SHA"
       - "."
 
-  - name: "gcr.io/cloud-builders/docker"
+  - name: gcr.io/cloud-builders/docker
     args:
-      - "push"
-      - "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA"
+      - push
+      - "europe-west2-docker.pkg.dev/$PROJECT_ID/attribution-auto/<attribution-auto>:$SHORT_SHA"
 
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    entrypoint: "gcloud"
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
     args:
-      - "run"
-      - "jobs"
-      - "update"
-      - "attribution-model"
-      - "--image"
-      - "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA"
-      - "--region"
-      - "europe-west1"
+      - run
+      - jobs
+      - update
+      - "<attribution-auto>"
+      - "--region=europe-west2"
+      - "--image=europe-west2-docker.pkg.dev/$PROJECT_ID/attribution-auto/<attribution-auto>:$SHORT_SHA"
 
 images:
-  - "europe-docker.pkg.dev/$PROJECT_ID/attributionv5/attribution-model:$COMMIT_SHA"
-
-options:
-  logging: CLOUD_LOGGING_ONLY
+  - "europe-west2-docker.pkg.dev/$PROJECT_ID/attribution-auto/<attribution-auto>:$SHORT_SHA"
