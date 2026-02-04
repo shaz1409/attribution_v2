@@ -180,7 +180,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'is_app_conversion',
         'product_type',
         'user_registration_source',
-         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date', 'product_arrangement_id', 'is_app_conversion', 'product_type'], keep='first')
+         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date'], keep='first')
 
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
@@ -357,7 +357,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'is_app_conversion',
         'product_type',
         'user_registration_source',
-         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date', 'product_arrangement_id', 'is_app_conversion', 'product_type'], keep='first')
+         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date'], keep='first')
     
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
@@ -534,7 +534,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'is_app_conversion',
         'product_type',
         'user_registration_source',
-         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date', 'product_arrangement_id', 'is_app_conversion', 'product_type'], keep='first')
+         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date'], keep='first')
     
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
@@ -791,7 +791,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'is_app_conversion',
         'product_type',
         'user_registration_source',
-         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date', 'product_arrangement_id', 'is_app_conversion', 'product_type'], keep='first')
+         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date'], keep='first')
 
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
@@ -966,7 +966,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'is_app_conversion',
         'product_type',
         'user_registration_source',
-         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date', 'product_arrangement_id', 'is_app_conversion', 'product_type'], keep='first')
+         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date'], keep='first')
 
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
@@ -1142,7 +1142,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'is_app_conversion',
         'product_type',
         'user_registration_source',
-         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date', 'product_arrangement_id', 'is_app_conversion', 'product_type'], keep='first')
+         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date'], keep='first')
     
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
@@ -1401,7 +1401,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'is_app_conversion',
         'product_type',
         'user_registration_source',
-         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date', 'product_arrangement_id', 'is_app_conversion', 'product_type'], keep='first')
+         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date'], keep='first')
 
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
@@ -1626,7 +1626,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'is_app_conversion',
         'product_type',
         'user_registration_source',
-         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date', 'product_arrangement_id', 'is_app_conversion', 'product_type'], keep='first')
+         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date'], keep='first')
 
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
@@ -1851,7 +1851,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         'is_app_conversion',
         'product_type',
         'user_registration_source',
-         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date', 'product_arrangement_id', 'is_app_conversion', 'product_type'], keep='first')
+         ]].drop_duplicates(subset=['user_guid', 'conversion_visit_timestamp_date'], keep='first')
     
         # Merge user_df_temp with product_arrangement_df
         user_df_temp = user_df_temp.merge(
@@ -1966,6 +1966,10 @@ attribution_df_all_regis["conversion_type"] = "Registration"
 
 user_df_all = pd.concat([user_df_all_trial, user_df_all_subs], ignore_index=True)
 user_df_all= pd.concat([user_df_all, user_df_all_regis], ignore_index=True)
+
+# Ensure user_registration_source column exists (values come from staging via product_arrangement_df merge; only add if missing)
+if "user_registration_source" not in user_df_all.columns:
+    user_df_all["user_registration_source"] = pd.NA
 
 markov_transition_matrix_all = pd.concat(
     [markov_transition_matrix_all_trial, markov_transition_matrix_all_subs],
