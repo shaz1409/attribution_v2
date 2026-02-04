@@ -13,13 +13,13 @@ steps:
     args:
       - build
       - "-t"
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+      - "$_AR_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA"
       - "."
 
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+      - "$_AR_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA"
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
@@ -27,9 +27,9 @@ steps:
       - run
       - jobs
       - update
-      - "${_JOB_NAME}"
-      - "--region=${_REGION}"
-      - "--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+      - "$_JOB_NAME"
+      - "--region=$_JOB_REGION"
+      - "--image=$_AR_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA"
 
 images:
-  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE}:$SHORT_SHA"
+  - "$_AR_REGION-docker.pkg.dev/$PROJECT_ID/$_AR_REPO/$_IMAGE:$SHORT_SHA"
