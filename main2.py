@@ -163,7 +163,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         # User-level attribution data
         user_df_temp = attributions.as_pd_dataframe()
         user_df_temp["num_touchpoints"] = (
-            user_df_temp["channels_agg"].str.split(" > ").apply(len)
+            user_df_temp["channels_agg"].fillna("").str.split(" > ").apply(lambda x: len(x) if isinstance(x, list) else 0)
         )
         user_df_temp["run_date"] = current_date.date()
 
@@ -340,7 +340,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         # User-level attribution data
         user_df_temp = attributions.as_pd_dataframe()
         user_df_temp["num_touchpoints"] = (
-            user_df_temp["channels_agg"].str.split(" > ").apply(len)
+            user_df_temp["channels_agg"].fillna("").str.split(" > ").apply(lambda x: len(x) if isinstance(x, list) else 0)
         )
         user_df_temp["run_date"] = current_date.date()
     
@@ -517,7 +517,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
        # User-level attribution data
         user_df_temp = attributions.as_pd_dataframe()
         user_df_temp["num_touchpoints"] = (
-            user_df_temp["channels_agg"].str.split(" > ").apply(len)
+            user_df_temp["channels_agg"].fillna("").str.split(" > ").apply(lambda x: len(x) if isinstance(x, list) else 0)
         )
         user_df_temp["run_date"] = current_date.date()
     
@@ -637,7 +637,7 @@ markov_transition_matrix_all_subs = pd.concat(markov_transition_dfs, ignore_inde
 user_dfs = [globals()[f'user_df_all_subs_{suffix}'] for suffix in suffixes]
 user_df_all_subs = pd.concat(user_dfs, ignore_index=True)
 
-user_df_all_subs['num_touchpoints'] = user_df_all_subs['channels_agg'].str.split(' > ').apply(len)
+user_df_all_subs['num_touchpoints'] = user_df_all_subs['channels_agg'].fillna("").str.split(' > ').apply(lambda x: len(x) if isinstance(x, list) else 0)
 user_df_all_subs["conversion_type"] = "Subscription"
 markov_transition_matrix_all_subs["conversion_type"] = "Subscription"
 normalized_removal_effects_all_subs["conversion_type"] = "Subscription"
@@ -775,7 +775,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         # User-level attribution data
         user_df_temp = attributions.as_pd_dataframe()
         user_df_temp["num_touchpoints"] = (
-            user_df_temp["channels_agg"].str.split(" > ").apply(len)
+            user_df_temp["channels_agg"].fillna("").str.split(" > ").apply(lambda x: len(x) if isinstance(x, list) else 0)
         )
         user_df_temp["run_date"] = current_date.date()
 
@@ -949,7 +949,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         # User-level attribution data
         user_df_temp = attributions.as_pd_dataframe()
         user_df_temp["num_touchpoints"] = (
-            user_df_temp["channels_agg"].str.split(" > ").apply(len)
+            user_df_temp["channels_agg"].fillna("").str.split(" > ").apply(lambda x: len(x) if isinstance(x, list) else 0)
         )
         user_df_temp["run_date"] = current_date.date()
 
@@ -1125,7 +1125,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         # User-level attribution data
         user_df_temp = attributions.as_pd_dataframe()
         user_df_temp["num_touchpoints"] = (
-            user_df_temp["channels_agg"].str.split(" > ").apply(len)
+            user_df_temp["channels_agg"].fillna("").str.split(" > ").apply(lambda x: len(x) if isinstance(x, list) else 0)
         )
         user_df_temp["run_date"] = current_date.date()
 
@@ -1258,7 +1258,7 @@ user_dfs_trial = [globals()[f"user_df_all_trial_{suffix}"] for suffix in suffixe
 user_df_all_trial = pd.concat(user_dfs_trial, ignore_index=True)
 
 user_df_all_trial["num_touchpoints"] = (
-    user_df_all_trial["channels_agg"].str.split(" > ").apply(len)
+    user_df_all_trial["channels_agg"].fillna("").str.split(" > ").apply(lambda x: len(x) if isinstance(x, list) else 0)
 )
 user_df_all_trial["conversion_type"] = "Trial"
 markov_transition_matrix_all_trial["conversion_type"] = "Trial"
@@ -1384,7 +1384,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         # User-level attribution data
         user_df_temp = attributions.as_pd_dataframe()
         user_df_temp["num_touchpoints"] = (
-            user_df_temp["channels_agg"].str.split(" > ").apply(len)
+            user_df_temp["channels_agg"].fillna("").str.split(" > ").apply(lambda x: len(x) if isinstance(x, list) else 0)
         )
         user_df_temp["run_date"] = current_date.date()
 
@@ -1609,7 +1609,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         # User-level attribution data
         user_df_temp = attributions.as_pd_dataframe()
         user_df_temp["num_touchpoints"] = (
-            user_df_temp["channels_agg"].str.split(" > ").apply(len)
+            user_df_temp["channels_agg"].fillna("").str.split(" > ").apply(lambda x: len(x) if isinstance(x, list) else 0)
         )
         user_df_temp["run_date"] = current_date.date()
 
@@ -1834,7 +1834,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         # User-level attribution data
         user_df_temp = attributions.as_pd_dataframe()
         user_df_temp["num_touchpoints"] = (
-            user_df_temp["channels_agg"].str.split(" > ").apply(len)
+            user_df_temp["channels_agg"].fillna("").str.split(" > ").apply(lambda x: len(x) if isinstance(x, list) else 0)
         )
         user_df_temp["run_date"] = current_date.date()
 
@@ -1954,7 +1954,7 @@ markov_transition_matrix_all_regis = pd.concat(markov_transition_dfs_regis, igno
 user_dfs_regis = [globals()[f'user_df_all_regis_{suffix}'] for suffix in suffixes]
 user_df_all_regis = pd.concat(user_dfs_regis, ignore_index=True)
 
-user_df_all_regis['num_touchpoints'] = user_df_all_regis['channels_agg'].str.split(' > ').apply(len)
+user_df_all_regis['num_touchpoints'] = user_df_all_regis['channels_agg'].fillna("").str.split(' > ').apply(lambda x: len(x) if isinstance(x, list) else 0)
 user_df_all_regis["conversion_type"] = "Registration"
 markov_transition_matrix_all_regis["conversion_type"] = "Registration"
 normalized_removal_effects_all_regis["conversion_type"] = "Registration"
@@ -2114,27 +2114,37 @@ def calculate_removal_effect(row):
     ltv = row["ltv_acquisition_capped_12m"]
     channels = row["channels_agg"]
 
-    if pd.isna(attr) or pd.isna(channels):
+    if attr is None or channels is None or pd.isna(attr) or pd.isna(channels):
+        return np.nan
+    if pd.isna(ltv) or ltv is None:
+        return np.nan
+    try:
+        attr_str = str(attr).strip()
+        channels_str = str(channels).strip()
+    except Exception:
+        return np.nan
+    if not attr_str or not channels_str:
         return np.nan
 
-    attr_parts = attr.split(">")
-    channel_parts = channels.split(">")
+    attr_parts = attr_str.split(">")
+    channel_parts = channels_str.split(">")
 
     if len(attr_parts) != len(channel_parts):
         return np.nan
 
     new_parts = []
-    for channel, part in zip(channel_parts, attr_parts):
-        channel = channel.strip()
-        part = part.strip()
+    for ch, pt in zip(channel_parts, attr_parts):
+        ch = (ch or "").strip()
+        pt = (pt or "").strip()
         try:
-            val = float(part)
-            multiplied_val = val * ltv
+            val = float(pt)
+            multiplied_val = val * float(ltv)
             formatted_val = f"{multiplied_val}"
-            new_parts.append(f"{channel}: {formatted_val}")
-        except ValueError:
+            new_parts.append(f"{ch}: {formatted_val}")
+        except (ValueError, TypeError):
             return np.nan
-
+    if not new_parts:
+        return np.nan
     return " > ".join(new_parts)
 
 
