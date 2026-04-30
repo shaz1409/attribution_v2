@@ -23,6 +23,13 @@ from google.cloud import bigquery, bigquery_storage
 
 ################################################# Data Loading  #########################################
 
+_creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+if _creds_json:
+    _creds_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+    _creds_file.write(_creds_json)
+    _creds_file.close()
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = _creds_file.name
+
 project = "ft-customer-analytics"
 location = "EU"
 client = bigquery.Client(project=project, location=location)
