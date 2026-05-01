@@ -8,8 +8,6 @@ from markovclick.viz import visualise_markov_chain
 import os
 import graphviz
 import matplotlib as mpl
-from pandas.io import gbq
-import pandas_gbq
 import glob
 from pylab import *
 import tempfile
@@ -19,21 +17,20 @@ import seaborn as sns
 import gc
 from datetime import datetime
 import re
-from google.cloud import bigquery, bigquery_storage
+import traceback
+import psycopg2
+from sqlalchemy import create_engine
 
 ################################################# Data Loading  #########################################
 
-_creds_json = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
-if _creds_json:
-    _creds_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-    _creds_file.write(_creds_json)
-    _creds_file.close()
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = _creds_file.name
+_rs_host = os.environ.get("REDSHIFT_HOST", "redshift.dw.in.ft.com")
+_rs_port = int(os.environ.get("REDSHIFT_PORT", 5439))
+_rs_db = os.environ.get("REDSHIFT_DB", "prod")
+_rs_user = os.environ.get("REDSHIFT_USER")
+_rs_password = os.environ.get("REDSHIFT_PASSWORD")
 
-project = "ft-customer-analytics"
-location = "EU"
-client = bigquery.Client(project=project, location=location)
-bqstorage = bigquery_storage.BigQueryReadClient()
+conn = psycopg2.connect(host=_rs_host, port=_rs_port, dbname=_rs_db, user=_rs_user, password=_rs_password)
+engine = create_engine(f"postgresql+psycopg2://{_rs_user}:{_rs_password}@{_rs_host}:{_rs_port}/{_rs_db}")
 
 ################################################# Define variables #################################################
 
@@ -50,7 +47,7 @@ start_date = end_date - pd.DateOffset(days=14)
 start_date = start_date.date()
 end_date = end_date.date() 
 
-table_id = "ft-customer-analytics.crg_nniu_attribution.stg_conversion_users_last_15_days_90_days_lookback_table"
+table_id = "bilayer.stg_conversion_users_last_15_days_90_days_lookback_table"
 
 ################################################# Output DataFrames  #################################################
 
@@ -66,14 +63,17 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     # Create SQL query for the current date
     query = f"""
     SELECT * FROM {table_id}
-    WHERE DATE(conversion_visit_timestamp) = "{current_date.strftime('%Y-%m-%d')}"
+    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
     """
     print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
 
 
     # Execute the query
-    query_job = client.query(query)
-    df = query_job.to_dataframe(bqstorage_client=bqstorage)
+    df = pd.read_sql(query, engine)
+    print(f"  -> {len(df)} rows returned")
+    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -82,7 +82,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     ################################################# Data Cleaning  #########################################
     
     df["original_transaction"] = df["converting_visit"]
-    sub_df = df[df["conversion_type"] == "Subscription"].drop(columns=["conversion_type"])
+    sub_df = df[df["conversion_type"] == "Subscription"].drop(columns=["conversion_type"]).copy()
 
     sub_df["user_max_date"] = sub_df.groupby(ids)["conversion_visit_timestamp"].transform("max")
     sub_df[transaction] = 0
@@ -258,9 +258,8 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         print(f"Processed data for {current_date.strftime('%Y-%m-%d')}")
 
     except Exception as e:
-        print(
-            f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}"
-        )
+        print(f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}")
+        print(traceback.format_exc())
         continue
 
 ################################################# Finalize Results #########################################
@@ -277,7 +276,7 @@ user_df_all_subs_90["conversion_type"] = "Subscription"
 
 ################################################################################################## Sub 60 days ##########################################################################################
 
-table_id = "ft-customer-analytics.crg_nniu_attribution.stg_conversion_users_last_15_days_60_days_lookback_table"
+table_id = "bilayer.stg_conversion_users_last_15_days_60_days_lookback_table"
 
 attribution_df_all_subs_60 = pd.DataFrame()
 normalized_removal_effects_all_subs_60 = pd.DataFrame()
@@ -288,14 +287,17 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     # Create SQL query for the current date
     query = f"""
     SELECT * FROM {table_id}
-    WHERE DATE(conversion_visit_timestamp) = "{current_date.strftime('%Y-%m-%d')}"
+    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
     """
     print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
 
 
     # Execute the query
-    query_job = client.query(query)
-    df = query_job.to_dataframe(bqstorage_client=bqstorage)
+    df = pd.read_sql(query, engine)
+    print(f"  -> {len(df)} rows returned")
+    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -304,7 +306,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     ################################################# Data Cleaning  #########################################
     
     df["original_transaction"] = df["converting_visit"]
-    sub_df = df[df["conversion_type"] == "Subscription"].drop(columns=["conversion_type"])
+    sub_df = df[df["conversion_type"] == "Subscription"].drop(columns=["conversion_type"]).copy()
     
     sub_df["user_max_date"] = sub_df.groupby(ids)[date].transform("max")
     sub_df[transaction] = 0
@@ -434,9 +436,8 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         print(f"Processed data for {current_date.strftime('%Y-%m-%d')}")
     
     except Exception as e:
-        print(
-            f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}"
-        )
+        print(f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}")
+        print(traceback.format_exc())
         continue
 
 ################################################# Finalize Results #########################################
@@ -454,7 +455,7 @@ user_df_all_subs_60["conversion_type"] = "Subscription"
 
 ################################################################################################## Sub 30 days ##########################################################################################
 
-table_id = "ft-customer-analytics.crg_nniu_attribution.stg_conversion_users_last_15_days_30_days_lookback_table"
+table_id = "bilayer.stg_conversion_users_last_15_days_30_days_lookback_table"
 
 attribution_df_all_subs_30 = pd.DataFrame()
 normalized_removal_effects_all_subs_30 = pd.DataFrame()
@@ -465,14 +466,17 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     # Create SQL query for the current date
     query = f"""
     SELECT * FROM {table_id}
-    WHERE DATE(conversion_visit_timestamp) = "{current_date.strftime('%Y-%m-%d')}"
+    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
     """
     print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
 
 
     # Execute the query
-    query_job = client.query(query)
-    df = query_job.to_dataframe(bqstorage_client=bqstorage)
+    df = pd.read_sql(query, engine)
+    print(f"  -> {len(df)} rows returned")
+    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -481,7 +485,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     ################################################# Data Cleaning  #########################################
     
     df["original_transaction"] = df["converting_visit"]
-    sub_df = df[df["conversion_type"] == "Subscription"].drop(columns=["conversion_type"])
+    sub_df = df[df["conversion_type"] == "Subscription"].drop(columns=["conversion_type"]).copy()
     
     sub_df["user_max_date"] = sub_df.groupby(ids)[date].transform("max")
     sub_df[transaction] = 0
@@ -611,9 +615,8 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         print(f"Processed data for {current_date.strftime('%Y-%m-%d')}")
     
     except Exception as e:
-        print(
-            f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}"
-        )
+        print(f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}")
+        print(traceback.format_exc())
         continue
 
 ################################################# Finalize Results #########################################
@@ -668,7 +671,7 @@ attribution_df_all_subs["conversion_type"] = "Subscription"
 
 
 ############################################################################################## Trial 90 days ##########################################################################################
-table_id = "ft-customer-analytics.crg_nniu_attribution.stg_conversion_users_last_15_days_90_days_lookback_table"
+table_id = "bilayer.stg_conversion_users_last_15_days_90_days_lookback_table"
 
 attribution_df_all_trial_90 = pd.DataFrame()
 normalized_removal_effects_all_trial_90 = pd.DataFrame()
@@ -680,14 +683,17 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     # Create SQL query for the current date
     query = f"""
     SELECT * FROM {table_id}
-    WHERE DATE(conversion_visit_timestamp) = "{current_date.strftime('%Y-%m-%d')}"
+    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
     """
     print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
 
 
     # Execute the query
-    query_job = client.query(query)
-    df = query_job.to_dataframe(bqstorage_client=bqstorage)
+    df = pd.read_sql(query, engine)
+    print(f"  -> {len(df)} rows returned")
+    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -696,7 +702,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     ################################################# Data Cleaning  #########################################
     
     df["original_transaction"] = df["converting_visit"]
-    trial_df = df[df["conversion_type"] == "Trial"].drop(columns=["conversion_type"])
+    trial_df = df[df["conversion_type"] == "Trial"].drop(columns=["conversion_type"]).copy()
 
     trial_df["user_max_date"] = trial_df.groupby(ids)[date].transform("max")
     trial_df[transaction] = 0
@@ -868,9 +874,8 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         print(f"Processed data for {current_date.strftime('%Y-%m-%d')}")
 
     except Exception as e:
-        print(
-            f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}"
-        )
+        print(f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}")
+        print(traceback.format_exc())
         continue
 
 ################################################# Finalize Results #########################################
@@ -886,7 +891,7 @@ markov_transition_matrix_all_trial_90["conversion_type"] = "Trial"
 user_df_all_trial_90["conversion_type"] = "Trial"
 
 ############################################################################################## Trial 60 days ##########################################################################################
-table_id = "ft-customer-analytics.crg_nniu_attribution.stg_conversion_users_last_15_days_60_days_lookback_table"
+table_id = "bilayer.stg_conversion_users_last_15_days_60_days_lookback_table"
 
 attribution_df_all_trial_60 = pd.DataFrame()
 normalized_removal_effects_all_trial_60 = pd.DataFrame()
@@ -897,14 +902,17 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     # Create SQL query for the current date
     query = f"""
     SELECT * FROM {table_id}
-    WHERE DATE(conversion_visit_timestamp) = "{current_date.strftime('%Y-%m-%d')}"
+    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
     """
     print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
 
 
     # Execute the query
-    query_job = client.query(query)
-    df = query_job.to_dataframe(bqstorage_client=bqstorage)
+    df = pd.read_sql(query, engine)
+    print(f"  -> {len(df)} rows returned")
+    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -913,7 +921,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     ################################################# Data Cleaning  #########################################
     
     df["original_transaction"] = df["converting_visit"]
-    trial_df = df[df["conversion_type"] == "Trial"].drop(columns=["conversion_type"])
+    trial_df = df[df["conversion_type"] == "Trial"].drop(columns=["conversion_type"]).copy()
 
     trial_df["user_max_date"] = trial_df.groupby(ids)[date].transform("max")
     trial_df[transaction] = 0
@@ -1043,9 +1051,8 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         print(f"Processed data for {current_date.strftime('%Y-%m-%d')}")
 
     except Exception as e:
-        print(
-            f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}"
-        )
+        print(f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}")
+        print(traceback.format_exc())
         continue
 
 ################################################# Finalize Results #########################################
@@ -1062,7 +1069,7 @@ user_df_all_trial_60["conversion_type"] = "Trial"
 
 ############################################################################################## Trial 30 days ##########################################################################################
 
-table_id = "ft-customer-analytics.crg_nniu_attribution.stg_conversion_users_last_15_days_30_days_lookback_table"
+table_id = "bilayer.stg_conversion_users_last_15_days_30_days_lookback_table"
 
 attribution_df_all_trial_30 = pd.DataFrame()
 normalized_removal_effects_all_trial_30 = pd.DataFrame()
@@ -1073,14 +1080,17 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     # Create SQL query for the current date
     query = f"""
     SELECT * FROM {table_id}
-    WHERE DATE(conversion_visit_timestamp) = "{current_date.strftime('%Y-%m-%d')}"
+    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
     """
     print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
 
 
     # Execute the query
-    query_job = client.query(query)
-    df = query_job.to_dataframe(bqstorage_client=bqstorage)
+    df = pd.read_sql(query, engine)
+    print(f"  -> {len(df)} rows returned")
+    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1089,7 +1099,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     ################################################# Data Cleaning  #########################################
     
     df["original_transaction"] = df["converting_visit"]
-    trial_df = df[df["conversion_type"] == "Trial"].drop(columns=["conversion_type"])
+    trial_df = df[df["conversion_type"] == "Trial"].drop(columns=["conversion_type"]).copy()
 
     trial_df["user_max_date"] = trial_df.groupby(ids)[date].transform("max")
     trial_df[transaction] = 0
@@ -1219,9 +1229,8 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         print(f"Processed data for {current_date.strftime('%Y-%m-%d')}")
 
     except Exception as e:
-        print(
-            f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}"
-        )
+        print(f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}")
+        print(traceback.format_exc())
         continue
 
 ################################################# Finalize Results #########################################
@@ -1274,7 +1283,7 @@ attribution_df_all_trial["conversion_type"] = "Trial"
 
 ############################################################################################## Regis 90 days ##########################################################################################
 
-table_id = "ft-customer-analytics.crg_nniu_attribution.stg_conversion_users_last_15_days_90_days_lookback_table"
+table_id = "bilayer.stg_conversion_users_last_15_days_90_days_lookback_table"
 
 attribution_df_all_regis_90 = pd.DataFrame()
 normalized_removal_effects_all_regis_90 = pd.DataFrame()
@@ -1288,14 +1297,17 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     # Create SQL query for the current date
     query = f"""
     SELECT * FROM {table_id}
-    WHERE DATE(conversion_visit_timestamp) = "{current_date.strftime('%Y-%m-%d')}"
+    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
     """
     print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
 
 
     # Execute the query
-    query_job = client.query(query)
-    df = query_job.to_dataframe(bqstorage_client=bqstorage)
+    df = pd.read_sql(query, engine)
+    print(f"  -> {len(df)} rows returned")
+    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1304,7 +1316,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     ################################################# Data Cleaning  #########################################
     
     df["original_transaction"] = df["converting_visit"]
-    regis_df = df[df["conversion_type"] == "registration"].drop(columns=["conversion_type"])
+    regis_df = df[df["conversion_type"] == "registration"].drop(columns=["conversion_type"]).copy()
 
     regis_df["user_max_date"] = regis_df.groupby(ids)["conversion_visit_timestamp"].transform("max")
     regis_df[transaction] = 0
@@ -1479,9 +1491,8 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         print(f"Processed data for {current_date.strftime('%Y-%m-%d')}")
 
     except Exception as e:
-        print(
-            f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}"
-        )
+        print(f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}")
+        print(traceback.format_exc())
         continue
 
 ################################################# Finalize Results #########################################
@@ -1499,7 +1510,7 @@ user_df_all_regis_90["conversion_type"] = "registration"
 
 
 ############################################################################################## Regis 60 days ##########################################################################################
-table_id = "ft-customer-analytics.crg_nniu_attribution.stg_conversion_users_last_15_days_60_days_lookback_table"
+table_id = "bilayer.stg_conversion_users_last_15_days_60_days_lookback_table"
 
 attribution_df_all_regis_60 = pd.DataFrame()
 normalized_removal_effects_all_regis_60 = pd.DataFrame()
@@ -1513,14 +1524,17 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     # Create SQL query for the current date
     query = f"""
     SELECT * FROM {table_id}
-    WHERE DATE(conversion_visit_timestamp) = "{current_date.strftime('%Y-%m-%d')}"
+    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
     """
     print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
 
 
     # Execute the query
-    query_job = client.query(query)
-    df = query_job.to_dataframe(bqstorage_client=bqstorage)
+    df = pd.read_sql(query, engine)
+    print(f"  -> {len(df)} rows returned")
+    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1529,7 +1543,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     ################################################# Data Cleaning  #########################################
     
     df["original_transaction"] = df["converting_visit"]
-    regis_df = df[df["conversion_type"] == "registration"].drop(columns=["conversion_type"])
+    regis_df = df[df["conversion_type"] == "registration"].drop(columns=["conversion_type"]).copy()
 
     regis_df["user_max_date"] = regis_df.groupby(ids)["conversion_visit_timestamp"].transform("max")
     regis_df[transaction] = 0
@@ -1704,9 +1718,8 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         print(f"Processed data for {current_date.strftime('%Y-%m-%d')}")
 
     except Exception as e:
-        print(
-            f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}"
-        )
+        print(f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}")
+        print(traceback.format_exc())
         continue
 
 ################################################# Finalize Results #########################################
@@ -1724,7 +1737,7 @@ user_df_all_regis_60["conversion_type"] = "registration"
 
 
 ############################################################################################## Regis 30 days ##########################################################################################
-table_id = "ft-customer-analytics.crg_nniu_attribution.stg_conversion_users_last_15_days_30_days_lookback_table"
+table_id = "bilayer.stg_conversion_users_last_15_days_30_days_lookback_table"
 
 attribution_df_all_regis_30 = pd.DataFrame()
 normalized_removal_effects_all_regis_30 = pd.DataFrame()
@@ -1738,14 +1751,17 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     # Create SQL query for the current date
     query = f"""
     SELECT * FROM {table_id}
-    WHERE DATE(conversion_visit_timestamp) = "{current_date.strftime('%Y-%m-%d')}"
+    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
     """
     print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
 
 
     # Execute the query
-    query_job = client.query(query)
-    df = query_job.to_dataframe(bqstorage_client=bqstorage)
+    df = pd.read_sql(query, engine)
+    print(f"  -> {len(df)} rows returned")
+    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1754,7 +1770,7 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     ################################################# Data Cleaning  #########################################
     
     df["original_transaction"] = df["converting_visit"]
-    regis_df = df[df["conversion_type"] == "registration"].drop(columns=["conversion_type"])
+    regis_df = df[df["conversion_type"] == "registration"].drop(columns=["conversion_type"]).copy()
 
     regis_df["user_max_date"] = regis_df.groupby(ids)["conversion_visit_timestamp"].transform("max")
     regis_df[transaction] = 0
@@ -1929,9 +1945,8 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         print(f"Processed data for {current_date.strftime('%Y-%m-%d')}")
 
     except Exception as e:
-        print(
-            f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}"
-        )
+        print(f"An error occurred for the date {current_date.strftime('%Y-%m-%d')}: {e}")
+        print(traceback.format_exc())
         continue
 
 ################################################# Finalize Results #########################################
@@ -2024,16 +2039,13 @@ user_df_all = user_df_all.rename(columns=renamed_columns)
 
 ######################################################################################## Merge with LTV #####################################################################################
 
-client = bigquery.Client(project="ft-customer-analytics")
-ltv_table_id = "ft-customer-analytics.crg_nniu.ltv_last_15_days"
+ltv_table_id = "bilayer.ltv_last_15_days"
 query = f"""
     SELECT * FROM
         {ltv_table_id}
 """
 
-
-query_job = client.query(query)
-ltv_df = query_job.to_dataframe(bqstorage_client=bqstorage)
+ltv_df = pd.read_sql(query, engine)
 
 ltv_df = ltv_df.dropna(subset=["ltv_acquisition_capped_12m"])
 
@@ -2287,46 +2299,29 @@ user_df_all.drop(columns=["user_guid_x", "user_guid_y"], inplace=True)
 #     except Exception as e:
 #         print(f"Error loading data to {destination_table}: {e}")
 
-job_config = bigquery.LoadJobConfig(
-    write_disposition=bigquery.WriteDisposition.WRITE_APPEND,  # Append after deleting old partitions
-    source_format=bigquery.SourceFormat.PARQUET,
-    autodetect=True,
-    time_partitioning=bigquery.TimePartitioning(
-        type_=bigquery.TimePartitioningType.DAY, field="run_date"
-    ),
-)
-
 dataframes = {
-    "ft-customer-analytics.crg_nniu_attribution.attribution_markov_transition_matrix_all_test": markov_transition_matrix_all,
-    "ft-customer-analytics.crg_nniu_attribution.attribution_normalized_removal_effects_all_test": normalized_removal_effects_all,
-    "ft-customer-analytics.crg_nniu_attribution.attribution_user_df_all_test": user_df_all,
-    "ft-customer-analytics.crg_nniu_attribution.attribution_df_all_test": attribution_df_all,
-    "ft-customer-analytics.crg_nniu_attribution.attribution_conversion_window_df_test": conversion_window_df
+    "attribution_markov_transition_matrix_all_test": markov_transition_matrix_all,
+    "attribution_normalized_removal_effects_all_test": normalized_removal_effects_all,
+    "attribution_user_df_all_test": user_df_all,
+    "attribution_df_all_test": attribution_df_all,
+    "attribution_conversion_window_df_test": conversion_window_df
 }
 
-for destination_table, dataframe in dataframes.items():
-    # Extract unique run_dates from the DataFrame
-    run_dates = dataframe['run_date'].unique()  # Already in "YYYY-MM-DD" format
-    
-    # Delete existing data for these run_dates
+cursor = conn.cursor()
+for table_name, dataframe in dataframes.items():
+    run_dates = dataframe['run_date'].unique()
     for run_date in run_dates:
-        query = f"""
-            DELETE FROM `{destination_table}`
-            WHERE run_date = DATE('{run_date}')
-        """
         try:
-            delete_job = client.query(query)
-            delete_job.result()  # Wait for completion
-            print(f"Deleted partition {run_date} from {destination_table}")
+            cursor.execute(f"DELETE FROM bilayer.{table_name} WHERE run_date = '{run_date}'")
+            print(f"Deleted partition {run_date} from bilayer.{table_name}")
         except Exception as e:
             print(f"Error deleting partition {run_date}: {e}")
-    
-    # Load new data into the cleared partitions
+    conn.commit()
     try:
-        load_job = client.load_table_from_dataframe(
-            dataframe.reset_index(drop=True), destination_table, job_config=job_config
-        )
-        load_job.result()
-        print(f"Loaded new data into {destination_table}")
+        dataframe.reset_index(drop=True).to_sql(table_name, engine, schema='bilayer', if_exists='append', index=False)
+        print(f"Loaded new data into bilayer.{table_name}")
     except Exception as e:
-        print(f"Error loading data to {destination_table}: {e}")
+        print(f"Error loading data to bilayer.{table_name}: {e}")
+
+cursor.close()
+conn.close()
