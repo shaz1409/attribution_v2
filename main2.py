@@ -71,6 +71,11 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
     # Execute the query
     df = pd.read_sql(query, engine)
     print(f"  -> {len(df)} rows returned")
+    if not df.empty and current_date == pd.Timestamp(start_date):
+        print(f"  [DIAG] columns: {list(df.columns)}")
+        print(f"  [DIAG] conversion_type values: {df['conversion_type'].unique().tolist() if 'conversion_type' in df.columns else 'MISSING'}")
+        print(f"  [DIAG] touchpoint sample: {df['touchpoint'].head(3).tolist() if 'touchpoint' in df.columns else 'MISSING'}")
+        print(f"  [DIAG] channels_agg exists: {'channels_agg' in df.columns}")
     df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
     _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
     df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
@@ -80,9 +85,11 @@ for current_date in pd.date_range(start_date, end_date, freq="D"):
         continue
 
     ################################################# Data Cleaning  #########################################
-    
+
     df["original_transaction"] = df["converting_visit"]
     sub_df = df[df["conversion_type"] == "Subscription"].drop(columns=["conversion_type"]).copy()
+    if sub_df.empty:
+        print(f"  -> No Subscription rows for {current_date.strftime('%Y-%m-%d')}, skipping MAM")
 
     sub_df["user_max_date"] = sub_df.groupby(ids)["conversion_visit_timestamp"].transform("max")
     sub_df[transaction] = 0
