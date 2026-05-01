@@ -59,26 +59,20 @@ conversion_window_df_subs = pd.DataFrame()
 
 ################################################# Process Data for Each Day #########################################
 
+print(f"Loading all data from {table_id}...")
+_df_all = pd.read_sql(
+    f"SELECT * FROM {table_id} WHERE conversion_visit_timestamp::DATE >= '{start_date}' AND conversion_visit_timestamp::DATE <= '{end_date}'",
+    engine
+)
+print(f"  -> {len(_df_all)} total rows loaded")
+_df_all = _df_all.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+_journey_all = _df_all.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+_df_all = _df_all.merge(_journey_all, on=['user_guid', 'conversion_visit_timestamp'])
+
 for current_date in pd.date_range(start_date, end_date, freq="D"):
-    # Create SQL query for the current date
-    query = f"""
-    SELECT * FROM {table_id}
-    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
-    """
-    print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
-
-
-    # Execute the query
-    df = pd.read_sql(query, engine)
-    print(f"  -> {len(df)} rows returned")
-    if not df.empty and current_date == pd.Timestamp(start_date):
-        print(f"  [DIAG] columns: {list(df.columns)}")
-        print(f"  [DIAG] conversion_type values: {df['conversion_type'].unique().tolist() if 'conversion_type' in df.columns else 'MISSING'}")
-        print(f"  [DIAG] touchpoint sample: {df['touchpoint'].head(3).tolist() if 'touchpoint' in df.columns else 'MISSING'}")
-        print(f"  [DIAG] channels_agg exists: {'channels_agg' in df.columns}")
-    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
-    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
-    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
+    print(f"Processing {current_date.strftime('%Y-%m-%d')}")
+    df = _df_all[_df_all['conversion_visit_timestamp'].dt.date == current_date.date()].copy()
+    print(f"  -> {len(df)} rows")
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -290,21 +284,20 @@ normalized_removal_effects_all_subs_60 = pd.DataFrame()
 markov_transition_matrix_all_subs_60 = pd.DataFrame()
 user_df_all_subs_60 = pd.DataFrame()
 
+print(f"Loading all data from {table_id}...")
+_df_all = pd.read_sql(
+    f"SELECT * FROM {table_id} WHERE conversion_visit_timestamp::DATE >= '{start_date}' AND conversion_visit_timestamp::DATE <= '{end_date}'",
+    engine
+)
+print(f"  -> {len(_df_all)} total rows loaded")
+_df_all = _df_all.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+_journey_all = _df_all.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+_df_all = _df_all.merge(_journey_all, on=['user_guid', 'conversion_visit_timestamp'])
+
 for current_date in pd.date_range(start_date, end_date, freq="D"):
-    # Create SQL query for the current date
-    query = f"""
-    SELECT * FROM {table_id}
-    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
-    """
-    print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
-
-
-    # Execute the query
-    df = pd.read_sql(query, engine)
-    print(f"  -> {len(df)} rows returned")
-    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
-    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
-    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
+    print(f"Processing {current_date.strftime('%Y-%m-%d')}")
+    df = _df_all[_df_all['conversion_visit_timestamp'].dt.date == current_date.date()].copy()
+    print(f"  -> {len(df)} rows")
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -469,21 +462,20 @@ normalized_removal_effects_all_subs_30 = pd.DataFrame()
 markov_transition_matrix_all_subs_30 = pd.DataFrame()
 user_df_all_subs_30 = pd.DataFrame()
 
+print(f"Loading all data from {table_id}...")
+_df_all = pd.read_sql(
+    f"SELECT * FROM {table_id} WHERE conversion_visit_timestamp::DATE >= '{start_date}' AND conversion_visit_timestamp::DATE <= '{end_date}'",
+    engine
+)
+print(f"  -> {len(_df_all)} total rows loaded")
+_df_all = _df_all.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+_journey_all = _df_all.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+_df_all = _df_all.merge(_journey_all, on=['user_guid', 'conversion_visit_timestamp'])
+
 for current_date in pd.date_range(start_date, end_date, freq="D"):
-    # Create SQL query for the current date
-    query = f"""
-    SELECT * FROM {table_id}
-    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
-    """
-    print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
-
-
-    # Execute the query
-    df = pd.read_sql(query, engine)
-    print(f"  -> {len(df)} rows returned")
-    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
-    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
-    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
+    print(f"Processing {current_date.strftime('%Y-%m-%d')}")
+    df = _df_all[_df_all['conversion_visit_timestamp'].dt.date == current_date.date()].copy()
+    print(f"  -> {len(df)} rows")
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -686,21 +678,20 @@ markov_transition_matrix_all_trial_90 = pd.DataFrame()
 user_df_all_trial_90 = pd.DataFrame()
 conversion_window_df_trial = pd.DataFrame()
 
+print(f"Loading all data from {table_id}...")
+_df_all = pd.read_sql(
+    f"SELECT * FROM {table_id} WHERE conversion_visit_timestamp::DATE >= '{start_date}' AND conversion_visit_timestamp::DATE <= '{end_date}'",
+    engine
+)
+print(f"  -> {len(_df_all)} total rows loaded")
+_df_all = _df_all.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+_journey_all = _df_all.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+_df_all = _df_all.merge(_journey_all, on=['user_guid', 'conversion_visit_timestamp'])
+
 for current_date in pd.date_range(start_date, end_date, freq="D"):
-    # Create SQL query for the current date
-    query = f"""
-    SELECT * FROM {table_id}
-    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
-    """
-    print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
-
-
-    # Execute the query
-    df = pd.read_sql(query, engine)
-    print(f"  -> {len(df)} rows returned")
-    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
-    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
-    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
+    print(f"Processing {current_date.strftime('%Y-%m-%d')}")
+    df = _df_all[_df_all['conversion_visit_timestamp'].dt.date == current_date.date()].copy()
+    print(f"  -> {len(df)} rows")
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -905,21 +896,20 @@ normalized_removal_effects_all_trial_60 = pd.DataFrame()
 markov_transition_matrix_all_trial_60 = pd.DataFrame()
 user_df_all_trial_60 = pd.DataFrame()
 
+print(f"Loading all data from {table_id}...")
+_df_all = pd.read_sql(
+    f"SELECT * FROM {table_id} WHERE conversion_visit_timestamp::DATE >= '{start_date}' AND conversion_visit_timestamp::DATE <= '{end_date}'",
+    engine
+)
+print(f"  -> {len(_df_all)} total rows loaded")
+_df_all = _df_all.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+_journey_all = _df_all.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+_df_all = _df_all.merge(_journey_all, on=['user_guid', 'conversion_visit_timestamp'])
+
 for current_date in pd.date_range(start_date, end_date, freq="D"):
-    # Create SQL query for the current date
-    query = f"""
-    SELECT * FROM {table_id}
-    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
-    """
-    print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
-
-
-    # Execute the query
-    df = pd.read_sql(query, engine)
-    print(f"  -> {len(df)} rows returned")
-    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
-    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
-    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
+    print(f"Processing {current_date.strftime('%Y-%m-%d')}")
+    df = _df_all[_df_all['conversion_visit_timestamp'].dt.date == current_date.date()].copy()
+    print(f"  -> {len(df)} rows")
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1083,21 +1073,20 @@ normalized_removal_effects_all_trial_30 = pd.DataFrame()
 markov_transition_matrix_all_trial_30 = pd.DataFrame()
 user_df_all_trial_30 = pd.DataFrame()
 
+print(f"Loading all data from {table_id}...")
+_df_all = pd.read_sql(
+    f"SELECT * FROM {table_id} WHERE conversion_visit_timestamp::DATE >= '{start_date}' AND conversion_visit_timestamp::DATE <= '{end_date}'",
+    engine
+)
+print(f"  -> {len(_df_all)} total rows loaded")
+_df_all = _df_all.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+_journey_all = _df_all.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+_df_all = _df_all.merge(_journey_all, on=['user_guid', 'conversion_visit_timestamp'])
+
 for current_date in pd.date_range(start_date, end_date, freq="D"):
-    # Create SQL query for the current date
-    query = f"""
-    SELECT * FROM {table_id}
-    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
-    """
-    print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
-
-
-    # Execute the query
-    df = pd.read_sql(query, engine)
-    print(f"  -> {len(df)} rows returned")
-    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
-    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
-    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
+    print(f"Processing {current_date.strftime('%Y-%m-%d')}")
+    df = _df_all[_df_all['conversion_visit_timestamp'].dt.date == current_date.date()].copy()
+    print(f"  -> {len(df)} rows")
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1300,21 +1289,20 @@ conversion_window_df_regis = pd.DataFrame()
 
 ################################################# Process Data for Each Day #########################################
 
+print(f"Loading all data from {table_id}...")
+_df_all = pd.read_sql(
+    f"SELECT * FROM {table_id} WHERE conversion_visit_timestamp::DATE >= '{start_date}' AND conversion_visit_timestamp::DATE <= '{end_date}'",
+    engine
+)
+print(f"  -> {len(_df_all)} total rows loaded")
+_df_all = _df_all.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+_journey_all = _df_all.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+_df_all = _df_all.merge(_journey_all, on=['user_guid', 'conversion_visit_timestamp'])
+
 for current_date in pd.date_range(start_date, end_date, freq="D"):
-    # Create SQL query for the current date
-    query = f"""
-    SELECT * FROM {table_id}
-    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
-    """
-    print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
-
-
-    # Execute the query
-    df = pd.read_sql(query, engine)
-    print(f"  -> {len(df)} rows returned")
-    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
-    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
-    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
+    print(f"Processing {current_date.strftime('%Y-%m-%d')}")
+    df = _df_all[_df_all['conversion_visit_timestamp'].dt.date == current_date.date()].copy()
+    print(f"  -> {len(df)} rows")
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1527,21 +1515,20 @@ conversion_window_df_regis = pd.DataFrame()
 
 ################################################# Process Data for Each Day #########################################
 
+print(f"Loading all data from {table_id}...")
+_df_all = pd.read_sql(
+    f"SELECT * FROM {table_id} WHERE conversion_visit_timestamp::DATE >= '{start_date}' AND conversion_visit_timestamp::DATE <= '{end_date}'",
+    engine
+)
+print(f"  -> {len(_df_all)} total rows loaded")
+_df_all = _df_all.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+_journey_all = _df_all.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+_df_all = _df_all.merge(_journey_all, on=['user_guid', 'conversion_visit_timestamp'])
+
 for current_date in pd.date_range(start_date, end_date, freq="D"):
-    # Create SQL query for the current date
-    query = f"""
-    SELECT * FROM {table_id}
-    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
-    """
-    print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
-
-
-    # Execute the query
-    df = pd.read_sql(query, engine)
-    print(f"  -> {len(df)} rows returned")
-    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
-    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
-    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
+    print(f"Processing {current_date.strftime('%Y-%m-%d')}")
+    df = _df_all[_df_all['conversion_visit_timestamp'].dt.date == current_date.date()].copy()
+    print(f"  -> {len(df)} rows")
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
@@ -1754,21 +1741,20 @@ conversion_window_df_regis = pd.DataFrame()
 
 ################################################# Process Data for Each Day #########################################
 
+print(f"Loading all data from {table_id}...")
+_df_all = pd.read_sql(
+    f"SELECT * FROM {table_id} WHERE conversion_visit_timestamp::DATE >= '{start_date}' AND conversion_visit_timestamp::DATE <= '{end_date}'",
+    engine
+)
+print(f"  -> {len(_df_all)} total rows loaded")
+_df_all = _df_all.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
+_journey_all = _df_all.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
+_df_all = _df_all.merge(_journey_all, on=['user_guid', 'conversion_visit_timestamp'])
+
 for current_date in pd.date_range(start_date, end_date, freq="D"):
-    # Create SQL query for the current date
-    query = f"""
-    SELECT * FROM {table_id}
-    WHERE conversion_visit_timestamp::DATE = '{current_date.strftime('%Y-%m-%d')}'
-    """
-    print(f"Fetching data for {current_date.strftime('%Y-%m-%d')}")
-
-
-    # Execute the query
-    df = pd.read_sql(query, engine)
-    print(f"  -> {len(df)} rows returned")
-    df = df.sort_values(['user_guid', 'conversion_visit_timestamp', 'attribution_visit_start_time'])
-    _journey = df.groupby(['user_guid', 'conversion_visit_timestamp'])['touchpoint'].apply(' > '.join).reset_index(name='channels_agg')
-    df = df.merge(_journey, on=['user_guid', 'conversion_visit_timestamp'])
+    print(f"Processing {current_date.strftime('%Y-%m-%d')}")
+    df = _df_all[_df_all['conversion_visit_timestamp'].dt.date == current_date.date()].copy()
+    print(f"  -> {len(df)} rows")
 
     if df.empty:
         print(f"No data for {current_date.strftime('%Y-%m-%d')}")
