@@ -32,6 +32,156 @@ _rs_password = os.environ.get("REDSHIFT_PASSWORD")
 conn = psycopg2.connect(host=_rs_host, port=_rs_port, dbname=_rs_db, user=_rs_user, password=_rs_password)
 engine = create_engine(f"postgresql+psycopg2://{_rs_user}:{_rs_password}@{_rs_host}:{_rs_port}/{_rs_db}")
 
+################################################# Refresh staging tables (static snapshots, must be rebuilt each run) #################################################
+
+_stg_sqls = {
+    "bilayer.stg_conversion_users_last_15_days_30_days_lookback_table": """
+        DROP TABLE IF EXISTS bilayer.stg_conversion_users_last_15_days_30_days_lookback_table;
+        CREATE TABLE bilayer.stg_conversion_users_last_15_days_30_days_lookback_table AS
+        WITH converting_users AS (
+            SELECT DISTINCT user_guid, conversion_visit_timestamp
+            FROM bilayer.crg_attribution_channel_grouping_classification
+            WHERE b2b_b2c <> 'B2B'
+              AND converting_visit = 1
+              AND CAST(conversion_visit_timestamp AS DATE) >= DATEADD(day, -15, CURRENT_DATE)
+        ),
+        selected_visits AS (
+            SELECT
+                a.user_guid, a.attribution_visit_start_time, a.conversion_visit_timestamp,
+                a.visit_traffic_source_type, a.visit_traffic_source_name, a.visit_device_type,
+                a.converting_visit, a.conversion_type, a.product_arrangement_id, a.geo_country_name,
+                a.user_cohort_primary, a.media_type, a.channel, a.platform,
+                a.is_recognised_user, a.user_registration_source,
+                CASE WHEN LOWER(a.b2c_abstraction_datasource) IN ('apple','google') THEN 1 ELSE 0 END AS is_app_conversion,
+                COALESCE(a.media_type,'') || ' | ' || COALESCE(a.channel,'') || ' | ' || COALESCE(a.platform,'') || ' | ' ||
+                COALESCE(a.visit_traffic_source_name,'') || ' | ' || COALESCE(a.visit_device_type,'') || ' | ' ||
+                COALESCE(a.geo_country_name,'') || ' | ' || COALESCE(a.user_cohort_primary,'') || ' | ' ||
+                COALESCE(CASE WHEN a.is_recognised_user IS FALSE THEN 'Unrecognised' WHEN a.is_recognised_user IS TRUE THEN 'Recognised' ELSE '' END,'') AS touchpoint,
+                CASE
+                    WHEN LOWER(a.product_name) LIKE '%e-paper%' THEN 'Digital Edition'
+                    WHEN LOWER(a.product_name) LIKE '%edit%' THEN 'FT Edit'
+                    WHEN LOWER(a.product_name) = 'newspaper - 5 weekdays' THEN 'Newspaper'
+                    WHEN LOWER(a.product_name) = 'newspaper - 6 days a week' THEN 'Newspaper'
+                    WHEN LOWER(a.product_name) = 'ft weekend' THEN 'FT Weekend'
+                    WHEN LOWER(a.product_name) = 'newspaper - weekend only' THEN 'Newspaper'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'standard monthly' THEN 'Standard Monthly'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'premium monthly' THEN 'Premium Monthly'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'standard annual' THEN 'Standard Annual'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'premium annual' THEN 'Premium Annual'
+                    WHEN LOWER(a.product_name) = 'premium ft.com' AND a.b2c_product_term_rollup = 'Quarterly' THEN 'Premium Quarterly'
+                    WHEN LOWER(a.product_name) = 'standard ft.com' AND a.b2c_product_term_rollup = 'Quarterly' THEN 'Standard Quarterly'
+                    ELSE 'Others'
+                END AS product_type
+            FROM bilayer.crg_attribution_channel_grouping_classification a
+            JOIN converting_users b ON a.user_guid = b.user_guid AND a.conversion_visit_timestamp = b.conversion_visit_timestamp
+            WHERE a.b2b_b2c <> 'B2B'
+              AND CAST(a.attribution_visit_start_time AS DATE) >= DATEADD(day, -31, CAST(b.conversion_visit_timestamp AS DATE))
+              AND CAST(a.attribution_visit_start_time AS DATE) <= CAST(b.conversion_visit_timestamp AS DATE)
+        )
+        SELECT * FROM selected_visits;
+    """,
+    "bilayer.stg_conversion_users_last_15_days_60_days_lookback_table": """
+        DROP TABLE IF EXISTS bilayer.stg_conversion_users_last_15_days_60_days_lookback_table;
+        CREATE TABLE bilayer.stg_conversion_users_last_15_days_60_days_lookback_table AS
+        WITH converting_users AS (
+            SELECT DISTINCT user_guid, conversion_visit_timestamp
+            FROM bilayer.crg_attribution_channel_grouping_classification
+            WHERE b2b_b2c <> 'B2B'
+              AND converting_visit = 1
+              AND CAST(conversion_visit_timestamp AS DATE) >= DATEADD(day, -15, CURRENT_DATE)
+        ),
+        selected_visits AS (
+            SELECT
+                a.user_guid, a.attribution_visit_start_time, a.conversion_visit_timestamp,
+                a.visit_traffic_source_type, a.visit_traffic_source_name, a.visit_device_type,
+                a.converting_visit, a.conversion_type, a.product_arrangement_id, a.geo_country_name,
+                a.user_cohort_primary, a.media_type, a.channel, a.platform,
+                a.is_recognised_user, a.user_registration_source,
+                CASE WHEN LOWER(a.b2c_abstraction_datasource) IN ('apple','google') THEN 1 ELSE 0 END AS is_app_conversion,
+                COALESCE(a.media_type,'') || ' | ' || COALESCE(a.channel,'') || ' | ' || COALESCE(a.platform,'') || ' | ' ||
+                COALESCE(a.visit_traffic_source_name,'') || ' | ' || COALESCE(a.visit_device_type,'') || ' | ' ||
+                COALESCE(a.geo_country_name,'') || ' | ' || COALESCE(a.user_cohort_primary,'') || ' | ' ||
+                COALESCE(CASE WHEN a.is_recognised_user IS FALSE THEN 'Unrecognised' WHEN a.is_recognised_user IS TRUE THEN 'Recognised' ELSE '' END,'') AS touchpoint,
+                CASE
+                    WHEN LOWER(a.product_name) LIKE '%e-paper%' THEN 'Digital Edition'
+                    WHEN LOWER(a.product_name) LIKE '%edit%' THEN 'FT Edit'
+                    WHEN LOWER(a.product_name) = 'newspaper - 5 weekdays' THEN 'Newspaper'
+                    WHEN LOWER(a.product_name) = 'newspaper - 6 days a week' THEN 'Newspaper'
+                    WHEN LOWER(a.product_name) = 'ft weekend' THEN 'FT Weekend'
+                    WHEN LOWER(a.product_name) = 'newspaper - weekend only' THEN 'Newspaper'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'standard monthly' THEN 'Standard Monthly'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'premium monthly' THEN 'Premium Monthly'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'standard annual' THEN 'Standard Annual'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'premium annual' THEN 'Premium Annual'
+                    WHEN LOWER(a.product_name) = 'premium ft.com' AND a.b2c_product_term_rollup = 'Quarterly' THEN 'Premium Quarterly'
+                    WHEN LOWER(a.product_name) = 'standard ft.com' AND a.b2c_product_term_rollup = 'Quarterly' THEN 'Standard Quarterly'
+                    ELSE 'Others'
+                END AS product_type
+            FROM bilayer.crg_attribution_channel_grouping_classification a
+            JOIN converting_users b ON a.user_guid = b.user_guid AND a.conversion_visit_timestamp = b.conversion_visit_timestamp
+            WHERE a.b2b_b2c <> 'B2B'
+              AND CAST(a.attribution_visit_start_time AS DATE) >= DATEADD(day, -61, CAST(b.conversion_visit_timestamp AS DATE))
+              AND CAST(a.attribution_visit_start_time AS DATE) <= CAST(b.conversion_visit_timestamp AS DATE)
+        )
+        SELECT * FROM selected_visits;
+    """,
+    "bilayer.stg_conversion_users_last_15_days_90_days_lookback_table": """
+        DROP TABLE IF EXISTS bilayer.stg_conversion_users_last_15_days_90_days_lookback_table;
+        CREATE TABLE bilayer.stg_conversion_users_last_15_days_90_days_lookback_table AS
+        WITH converting_users AS (
+            SELECT DISTINCT user_guid, conversion_visit_timestamp
+            FROM bilayer.crg_attribution_channel_grouping_classification
+            WHERE b2b_b2c <> 'B2B'
+              AND converting_visit = 1
+              AND CAST(conversion_visit_timestamp AS DATE) >= DATEADD(day, -15, CURRENT_DATE)
+        ),
+        selected_visits AS (
+            SELECT
+                a.user_guid, a.attribution_visit_start_time, a.conversion_visit_timestamp,
+                a.visit_traffic_source_type, a.visit_traffic_source_name, a.visit_device_type,
+                a.converting_visit, a.conversion_type, a.product_arrangement_id, a.geo_country_name,
+                a.user_cohort_primary, a.media_type, a.channel, a.platform,
+                a.is_recognised_user, a.user_registration_source,
+                CASE WHEN LOWER(a.b2c_abstraction_datasource) IN ('apple','google') THEN 1 ELSE 0 END AS is_app_conversion,
+                COALESCE(a.media_type,'') || ' | ' || COALESCE(a.channel,'') || ' | ' || COALESCE(a.platform,'') || ' | ' ||
+                COALESCE(a.visit_traffic_source_name,'') || ' | ' || COALESCE(a.visit_device_type,'') || ' | ' ||
+                COALESCE(a.geo_country_name,'') || ' | ' || COALESCE(a.user_cohort_primary,'') || ' | ' ||
+                COALESCE(CASE WHEN a.is_recognised_user IS FALSE THEN 'Unrecognised' WHEN a.is_recognised_user IS TRUE THEN 'Recognised' ELSE '' END,'') AS touchpoint,
+                CASE
+                    WHEN LOWER(a.product_name) LIKE '%e-paper%' THEN 'Digital Edition'
+                    WHEN LOWER(a.product_name) LIKE '%edit%' THEN 'FT Edit'
+                    WHEN LOWER(a.product_name) = 'newspaper - 5 weekdays' THEN 'Newspaper'
+                    WHEN LOWER(a.product_name) = 'newspaper - 6 days a week' THEN 'Newspaper'
+                    WHEN LOWER(a.product_name) = 'ft weekend' THEN 'FT Weekend'
+                    WHEN LOWER(a.product_name) = 'newspaper - weekend only' THEN 'Newspaper'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'standard monthly' THEN 'Standard Monthly'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'premium monthly' THEN 'Premium Monthly'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'standard annual' THEN 'Standard Annual'
+                    WHEN LOWER(a.b2c_product_name_and_term) = 'premium annual' THEN 'Premium Annual'
+                    WHEN LOWER(a.product_name) = 'premium ft.com' AND a.b2c_product_term_rollup = 'Quarterly' THEN 'Premium Quarterly'
+                    WHEN LOWER(a.product_name) = 'standard ft.com' AND a.b2c_product_term_rollup = 'Quarterly' THEN 'Standard Quarterly'
+                    ELSE 'Others'
+                END AS product_type
+            FROM bilayer.crg_attribution_channel_grouping_classification a
+            JOIN converting_users b ON a.user_guid = b.user_guid AND a.conversion_visit_timestamp = b.conversion_visit_timestamp
+            WHERE a.b2b_b2c <> 'B2B'
+              AND CAST(a.attribution_visit_start_time AS DATE) >= DATEADD(day, -91, CAST(b.conversion_visit_timestamp AS DATE))
+              AND CAST(a.attribution_visit_start_time AS DATE) <= CAST(b.conversion_visit_timestamp AS DATE)
+        )
+        SELECT * FROM selected_visits;
+    """,
+}
+
+_cursor = conn.cursor()
+for _tbl, _sql in _stg_sqls.items():
+    print(f"Refreshing {_tbl}...")
+    for _stmt in [s.strip() for s in _sql.strip().split(';') if s.strip()]:
+        _cursor.execute(_stmt)
+    conn.commit()
+    print(f"  -> done")
+_cursor.close()
+print("All staging tables refreshed.")
+
 ################################################# Define variables #################################################
 
 ids = "user_guid"
