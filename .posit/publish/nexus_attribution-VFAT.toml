@@ -3,10 +3,10 @@
 # https://github.com/posit-dev/publisher/blob/main/docs/configuration.md
 "$schema" = "https://cdn.posit.co/publisher/schemas/posit-publishing-schema-v3.json"
 type = "jupyter-notebook"
-entrypoint = "main2.ipynb"
+entrypoint = "main3.ipynb"
 title = "nexus_attribution"
 files = [
-    "/main2.ipynb",
+    "/main3.ipynb",
     "/requirements.txt",
 ]
 validate = true

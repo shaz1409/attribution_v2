@@ -1,11 +1,10 @@
-google-cloud-bigquery
-google-cloud-bigquery-storage
+psycopg2-binary
+sqlalchemy>=1.4,<2
 marketing-attribution-models
 markovclick
 networkx
 tqdm
 pandas==1.3.3
-pandas-gbq==0.17.0
 matplotlib==3.4.3
 seaborn==0.11.2
 numpy<2
